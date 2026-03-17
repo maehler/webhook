@@ -36,6 +36,21 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+      - "^chore:"
+  groups:
+    - title: Features
+      regexp: '^feat(\([[:word:]]\))?:.+$'
+      order: 0
+    - title: Bugfixes
+      regexp: '^fix(\([[:word:]]\))?:.+$'
+      order: 1
+    - title: CI
+      regexp: '^ci(\([[:word:]]\))?:.+$'
+      order: 2
+    - title: Refactor
+      regexp: '^refactor(\([[:word:]]\))?:.+$'
+      order: 3
+  format: "{{.Message}} ({{.SHA}})"
 
 release:
   footer: >-
