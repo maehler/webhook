@@ -12,10 +12,17 @@ type (
 
 var ClientOpts ClientOptions = struct{}{}
 
-// WithTimout sets the timeout for individual webhook requests.
-func (o ClientOptions) WithTimeout(timeout time.Duration) ClientOptionFunc {
+// WithRequestTimeout sets the timeout for individual webhook requests.
+func (o ClientOptions) WithRequestTimeout(timeout time.Duration) ClientOptionFunc {
 	return func(c *Client) {
 		c.Timeout = timeout
+	}
+}
+
+// WithTimeout sets the total timeout for all attempts.
+func (o ClientOptions) WithTimeout(timeout time.Duration) ClientOptionFunc {
+	return func(c *Client) {
+		c.retryConfig.maxTime = timeout
 	}
 }
 

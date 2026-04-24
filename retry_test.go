@@ -9,6 +9,7 @@ import (
 
 func TestRetry(t *testing.T) {
 	cfg := retryConfig{
+		maxTime:    10 * time.Second,
 		maxRetries: 5,
 		backoff:    func(n int) time.Duration { return 0 * time.Second },
 		retryable:  func(error) bool { return true },
@@ -44,6 +45,9 @@ func TestExponentialBackoff(t *testing.T) {
 		{"0 tries", 0, 0},
 		{"1 tries", 1, 500 * time.Millisecond},
 		{"2 tries", 2, 1 * time.Second},
+		{"3 tries", 3, 2 * time.Second},
+		{"4 tries", 4, 4 * time.Second},
+		{"5 tries", 5, 8 * time.Second},
 		{"100 tries", 100, 1 * time.Minute},
 	}
 
@@ -65,6 +69,8 @@ func TestLinearBackoff(t *testing.T) {
 		{"1 tries", 1, 500 * time.Millisecond},
 		{"2 tries", 2, 1000 * time.Millisecond},
 		{"3 tries", 3, 1500 * time.Millisecond},
+		{"4 tries", 4, 2000 * time.Millisecond},
+		{"5 tries", 5, 2500 * time.Millisecond},
 	}
 
 	for _, c := range testcases {
