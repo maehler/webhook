@@ -154,7 +154,7 @@ func TestClientCancel(t *testing.T) {
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := c.SendCtx(ctx, server.URL, "this is a test")
+	err := c.SendContext(ctx, server.URL, "this is a test")
 	if !errors.Is(err, context.Canceled) {
 		t.Error(err)
 	}
@@ -173,7 +173,7 @@ func TestRetryTimelimit(t *testing.T) {
 		ClientOpts.WithBackoffFunc(LinearBackoff(4*time.Millisecond, 100*time.Millisecond)),
 	)
 
-	err := c.SendCtx(context.Background(), server.URL, "this is a test")
+	err := c.SendContext(context.Background(), server.URL, "this is a test")
 
 	// All retries should have gone through
 	if count != 15 {
