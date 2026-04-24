@@ -171,3 +171,27 @@ func TestClientCtxTimeout(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestRetryTimelimit(t *testing.T) {
+	count := 0
+	server := NewSlowServer(t, 20*time.Millisecond, http.StatusOK, func(cr *capturedRequest) {
+		count += 1
+		t.Logf("request %d", count)
+	})
+	defer server.Close()
+
+	c := NewClient(
+		ClientOpts.WithTimeout(10*time.Millisecond), // Individual request timeout
+		ClientOpts.WithBackoffFunc(LinearBackoff(4*time.Millisecond, 100*time.Millisecond)),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Millisecond) // Should also be individual request timeout
+	defer cancel()
+	err := c.SendCtx(ctx, server.URL, "this is a test")
+
+	// All retries should have gone through
+	if count != 15 {
+		t.Errorf("expected %d requests, got %d requests", 15, count)
+	}
+	t.Log(err)
+}
