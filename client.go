@@ -42,14 +42,14 @@ func NewClient(opts ...ClientOptionFunc) *Client {
 
 // Send a webhook payload to the specified url.
 func (c *Client) Send(url string, payload any) error {
-	return c.SendCtx(context.Background(), url, payload)
+	return c.SendContext(context.Background(), url, payload)
 }
 
-// SendCtx sends a webhook payload to the specified url with a given context.
+// SendContext sends a webhook payload to the specified url with a given context.
 // ctx should not have a timeout set since Send manages this internally both
 // for individual requests and the total time for all retries. Cancellation
 // via ctx still happens.
-func (c *Client) SendCtx(ctx context.Context, url string, payload any) error {
+func (c *Client) SendContext(ctx context.Context, url string, payload any) error {
 	return retry(ctx, c.retryConfig, func() error {
 		return c.send(ctx, url, payload)
 	})
