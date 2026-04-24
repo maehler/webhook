@@ -93,7 +93,7 @@ func TestClientWithHeaders(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
-		ClientOpts.WithTimeout(50*time.Millisecond),
+		ClientOpts.WithRequestTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 		ClientOpts.WithHeaders(http.Header{
 			"x-version":  []string{"1.2.3"},
@@ -114,7 +114,7 @@ func TestClientTimeout(t *testing.T) {
 
 	c := NewClient(
 		ClientOpts.WithRetries(3),
-		ClientOpts.WithTimeout(50*time.Millisecond),
+		ClientOpts.WithRequestTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 	)
 	err := c.Send(server.URL, "this is a test")
@@ -169,7 +169,7 @@ func TestRetryTimelimit(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
-		ClientOpts.WithTimeout(10*time.Millisecond), // Individual request timeout
+		ClientOpts.WithRequestTimeout(10*time.Millisecond),
 		ClientOpts.WithBackoffFunc(LinearBackoff(4*time.Millisecond, 100*time.Millisecond)),
 	)
 
