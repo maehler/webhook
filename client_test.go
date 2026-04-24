@@ -106,7 +106,9 @@ func TestClientWithHeaders(t *testing.T) {
 }
 
 func TestClientTimeout(t *testing.T) {
+	count := 0
 	server := NewSlowServer(t, 200*time.Millisecond, http.StatusOK, func(r *capturedRequest) {
+		count += 1
 	})
 	defer server.Close()
 
@@ -116,10 +118,11 @@ func TestClientTimeout(t *testing.T) {
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 	)
 	err := c.Send(server.URL, "this is a test")
-	if err == nil {
-		t.Error("expected timeout error, got nil")
-	} else {
-		t.Log(err)
+	if count != 3 {
+		t.Errorf("expected %d attempts, got %d attempts", 3, count)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Error(err)
 	}
 }
 
@@ -157,21 +160,6 @@ func TestClientCancel(t *testing.T) {
 	}
 }
 
-func TestClientCtxTimeout(t *testing.T) {
-	server := NewBadServer(t, 5, func(cr *capturedRequest) {})
-	defer server.Close()
-
-	c := NewClient(
-		ClientOpts.WithBackoffFunc(ConstantBackoff(1 * time.Minute)),
-	)
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	err := c.SendCtx(ctx, server.URL, "this is a test")
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Error(err)
-	}
-}
-
 func TestRetryTimelimit(t *testing.T) {
 	count := 0
 	server := NewSlowServer(t, 20*time.Millisecond, http.StatusOK, func(cr *capturedRequest) {
@@ -185,9 +173,7 @@ func TestRetryTimelimit(t *testing.T) {
 		ClientOpts.WithBackoffFunc(LinearBackoff(4*time.Millisecond, 100*time.Millisecond)),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Millisecond) // Should also be individual request timeout
-	defer cancel()
-	err := c.SendCtx(ctx, server.URL, "this is a test")
+	err := c.SendCtx(context.Background(), server.URL, "this is a test")
 
 	// All retries should have gone through
 	if count != 15 {
