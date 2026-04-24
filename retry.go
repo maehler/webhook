@@ -15,6 +15,8 @@ type (
 type retryConfig struct {
 	// maxRetries is the maximum number of times to retry execution
 	maxRetries int
+	// maxTime is the maximum time allowed for all retries
+	maxTime time.Duration
 	// backoff determines the amount of time to wait until the next attempt as a function of the number of attempts.
 	backoff BackoffFunc
 	// retryable determines what types of errors should be retried as a function of the error.
@@ -24,6 +26,8 @@ type retryConfig struct {
 // retry retries the execution of a function if the function returns an error.
 // The behaviour of the retrying is controlled by retryConfig.
 func retry(ctx context.Context, cfg retryConfig, fn func() error) error {
+	ctx, cancel := context.WithTimeout(ctx, cfg.maxTime)
+	defer cancel()
 	var err error
 	for attempt := range cfg.maxRetries {
 		slog.Info("retrying function call", "attempt", attempt)

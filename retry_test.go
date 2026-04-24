@@ -9,6 +9,7 @@ import (
 
 func TestRetry(t *testing.T) {
 	cfg := retryConfig{
+		maxTime:    10 * time.Second,
 		maxRetries: 5,
 		backoff:    func(n int) time.Duration { return 0 * time.Second },
 		retryable:  func(error) bool { return true },

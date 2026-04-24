@@ -19,14 +19,16 @@ type Client struct {
 	retryConfig retryConfig
 }
 
-// NewClient creates a new webhook client. The default config uses a timeout for each individual request of 1 minute,
-// and a maximum of 15 retries with exponential backoff starting at 500ms.
+// NewClient creates a new webhook client. The default config uses a timeout for each
+// individual request of 10 seconds, and a maximum of 15 retries with exponential backoff
+// starting at 500ms, and a total timeout for all retries of 5 minutes.
 func NewClient(opts ...ClientOptionFunc) *Client {
 	client := Client{
 		client:  &http.Client{},
-		Timeout: 1 * time.Second,
+		Timeout: 10 * time.Second,
 		retryConfig: retryConfig{
 			maxRetries: 15,
+			maxTime:    5 * time.Minute,
 			backoff:    ExponentialBackoff(500*time.Millisecond, 1*time.Minute),
 			retryable:  IsRetryable,
 		},
@@ -43,7 +45,10 @@ func (c *Client) Send(url string, payload any) error {
 	return c.SendCtx(context.Background(), url, payload)
 }
 
-// Send a webhook payload to the specified url with a given context.
+// SendCtx sends a webhook payload to the specified url with a given context.
+// ctx should not have a timeout set since Send manages this internally both
+// for individual requests and the total time for all retries. Cancellation
+// via ctx still happens.
 func (c *Client) SendCtx(ctx context.Context, url string, payload any) error {
 	return retry(ctx, c.retryConfig, func() error {
 		return c.send(ctx, url, payload)
