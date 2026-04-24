@@ -181,3 +181,24 @@ func TestRetryTimelimit(t *testing.T) {
 	}
 	t.Log(err)
 }
+
+func TestRetryTimeout(t *testing.T) {
+	count := 0
+	server := NewBadServer(t, 20, func(cr *capturedRequest) {
+		count += 1
+		t.Logf("request %d", count)
+	})
+	defer server.Close()
+
+	c := NewClient(
+		ClientOpts.WithTimeout(50*time.Millisecond),
+		ClientOpts.WithBackoffFunc(LinearBackoff(10*time.Millisecond, 1*time.Minute)),
+	)
+	err := c.Send(server.URL, "this is a test")
+	if count > 5 {
+		t.Errorf("didn't expect more than %d attempts, got %d attempts", 5, count)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected to get context deadline exceeded, got %v", err)
+	}
+}
