@@ -56,7 +56,7 @@ func (c *Client) send(ctx context.Context, url string, payload any) error {
 		return err
 	}
 	br := bytes.NewReader(b)
-	r, err := http.NewRequest(c.Method, url, br)
+	r, err := http.NewRequestWithContext(ctx, c.Method, url, br)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,6 @@ func (c *Client) send(ctx context.Context, url string, payload any) error {
 		r.Header.Set(key, strings.Join(value, " "))
 	}
 	r.Header.Set("Content-Type", "application/json")
-	r = r.WithContext(ctx)
 
 	res, err := c.client.Do(r)
 	if err != nil {
