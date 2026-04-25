@@ -24,26 +24,26 @@ type retryConfig struct {
 
 // retry retries the execution of a function if the function returns an error.
 // The behaviour of the retrying is controlled by retryConfig.
-func retry(ctx context.Context, cfg retryConfig, fn func() error) error {
+func retry(ctx context.Context, cfg retryConfig, fn func() error) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, cfg.maxTime)
 	defer cancel()
 	var err error
 	for attempt := range cfg.maxRetries {
 		err = fn()
 		if err == nil {
-			return nil
+			return attempt + 1, nil
 		}
 		if !cfg.retryable(err) {
-			return err
+			return attempt + 1, err
 		}
 		wait := cfg.backoff(attempt + 1)
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return attempt + 1, ctx.Err()
 		case <-time.After(wait):
 		}
 	}
-	return fmt.Errorf("failed after %d attempts, last error: %w", cfg.maxRetries, err)
+	return cfg.maxRetries, fmt.Errorf("failed after %d attempts, last error: %w", cfg.maxRetries, err)
 }
 
 // NoBackoff returns a BackoffFunc that always returns 0.

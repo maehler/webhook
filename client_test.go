@@ -47,6 +47,8 @@ func NewBadServer(t *testing.T, failures int, handler func(*capturedRequest)) *h
 	t.Helper()
 	failureCount := 0
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		handler(&capturedRequest{body: body, header: r.Header})
 		if failureCount >= failures {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -70,9 +72,14 @@ func TestClient(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient()
-	if err := c.Send(server.URL, payload); err != nil {
+	res, err := c.Send(server.URL, payload)
+	if err != nil {
 		t.Error(err)
 	}
+	if res.Response.StatusCode != http.StatusOK {
+		t.Errorf("expected HTTP 200, got %s", res.Response.Status)
+	}
+	t.Log(res)
 }
 
 func TestClientWithHeaders(t *testing.T) {
@@ -100,9 +107,11 @@ func TestClientWithHeaders(t *testing.T) {
 			"user-agent": []string{"webhook-test/1.0"},
 		}),
 	)
-	if err := c.Send(server.URL, payload); err != nil {
+	res, err := c.Send(server.URL, payload)
+	if err != nil {
 		t.Error(err)
 	}
+	t.Log(res)
 }
 
 func TestClientTimeout(t *testing.T) {
@@ -117,9 +126,15 @@ func TestClientTimeout(t *testing.T) {
 		ClientOpts.WithRequestTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 	)
-	err := c.Send(server.URL, "this is a test")
+	res, err := c.Send(server.URL, "this is a test")
+	if count != res.Attempts {
+		t.Errorf("result should have %d attempts, got %d", count, res.Attempts)
+	}
 	if count != 3 {
 		t.Errorf("expected %d attempts, got %d attempts", 3, count)
+	}
+	if res.Response != nil {
+		t.Error("response is non-nil")
 	}
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Error(err)
@@ -133,13 +148,22 @@ func TestRateLimit(t *testing.T) {
 }
 
 func TestClientRetryOn500(t *testing.T) {
-	server := NewBadServer(t, 3, func(cr *capturedRequest) {})
+	var count int
+	server := NewBadServer(t, 3, func(cr *capturedRequest) {
+		count += 1
+	})
 	defer server.Close()
 
 	c := NewClient(
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 	)
-	err := c.Send(server.URL, "this is a test")
+	res, err := c.Send(server.URL, "this is a test")
+	if res.Attempts != count {
+		t.Errorf("expected %d attempts in result, got %d", count, res.Attempts)
+	}
+	if res.Response.StatusCode != http.StatusOK {
+		t.Errorf("expected HTTP 200, got %s", res.Response.Status)
+	}
 	if err != nil {
 		t.Error(err)
 	}
@@ -154,7 +178,13 @@ func TestClientCancel(t *testing.T) {
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := c.SendContext(ctx, server.URL, "this is a test")
+	res, err := c.SendContext(ctx, server.URL, "this is a test")
+	if res.Attempts != 1 {
+		t.Errorf("expected %d attempts in result, got %d", 1, res.Attempts)
+	}
+	if res.Response != nil {
+		t.Error("response is non-nil")
+	}
 	if !errors.Is(err, context.Canceled) {
 		t.Error(err)
 	}
@@ -173,13 +203,22 @@ func TestRetryTimelimit(t *testing.T) {
 		ClientOpts.WithBackoffFunc(LinearBackoff(4*time.Millisecond, 100*time.Millisecond)),
 	)
 
-	err := c.SendContext(context.Background(), server.URL, "this is a test")
+	res, err := c.SendContext(context.Background(), server.URL, "this is a test")
+	if count != res.Attempts {
+		t.Errorf("expected %d attempts in result, got %d", count, res.Attempts)
+	}
 
 	// All retries should have gone through
 	if count != 15 {
 		t.Errorf("expected %d requests, got %d requests", 15, count)
 	}
-	t.Log(err)
+	// None of the attempts should have yielded a response
+	if res.Response != nil {
+		t.Error("response is non-nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected deadline exceeded, got %v", err)
+	}
 }
 
 func TestRetryTimeout(t *testing.T) {
@@ -194,11 +233,17 @@ func TestRetryTimeout(t *testing.T) {
 		ClientOpts.WithTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(LinearBackoff(10*time.Millisecond, 1*time.Minute)),
 	)
-	err := c.Send(server.URL, "this is a test")
+	res, err := c.Send(server.URL, "this is a test")
+	if count != res.Attempts {
+		t.Errorf("expected %d attempts in result, got %d", count, res.Attempts)
+	}
 	if count > 5 {
 		t.Errorf("didn't expect more than %d attempts, got %d attempts", 5, count)
 	}
+	if res.Response.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected HTTP 500, got %s", res.Response.Status)
+	}
 	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Errorf("expected to get context deadline exceeded, got %v", err)
+		t.Errorf("expected deadline exceeded, got %v", err)
 	}
 }

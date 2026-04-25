@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+// Result is a result from Send on a webhook client.
+type Result struct {
+	Response *http.Response
+	Attempts int
+}
+
 // Client is a webhook client.
 type Client struct {
 	client *http.Client
@@ -41,7 +47,7 @@ func NewClient(opts ...ClientOptionFunc) *Client {
 }
 
 // Send a webhook payload to the specified url.
-func (c *Client) Send(url string, payload any) error {
+func (c *Client) Send(url string, payload any) (Result, error) {
 	return c.SendContext(context.Background(), url, payload)
 }
 
@@ -49,38 +55,46 @@ func (c *Client) Send(url string, payload any) error {
 // ctx should not have a timeout set since Send manages this internally both
 // for individual requests and the total time for all retries. Cancellation
 // via ctx still happens.
-func (c *Client) SendContext(ctx context.Context, url string, payload any) error {
-	return retry(ctx, c.retryConfig, func() error {
-		return c.send(ctx, url, payload)
+func (c *Client) SendContext(ctx context.Context, url string, payload any) (Result, error) {
+	var result Result
+	attempts, retryErr := retry(ctx, c.retryConfig, func() error {
+		resp, err := c.send(ctx, url, payload)
+		if resp != nil {
+			result.Response = resp
+		}
+		return err
 	})
+	result.Attempts = attempts
+	return result, retryErr
 }
 
-func (c *Client) send(ctx context.Context, url string, payload any) error {
+func (c *Client) send(ctx context.Context, url string, payload any) (*http.Response, error) {
+	var resp *http.Response
 	b, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return resp, err
 	}
 	br := bytes.NewReader(b)
 	r, err := http.NewRequestWithContext(ctx, c.Method, url, br)
 	if err != nil {
-		return err
+		return resp, err
 	}
 	for key, value := range c.Headers {
 		r.Header.Set(key, strings.Join(value, " "))
 	}
 	r.Header.Set("Content-Type", "application/json")
 
-	res, err := c.client.Do(r)
+	resp, err = c.client.Do(r)
 	if err != nil {
-		return err
+		return resp, err
 	}
 
-	if res.StatusCode >= 200 && res.StatusCode < 300 {
-		return nil
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return resp, nil
 	}
 
-	return WebhookError{
-		StatusCode: res.StatusCode,
-		Status:     res.Status,
+	return resp, WebhookError{
+		StatusCode: resp.StatusCode,
+		Status:     resp.Status,
 	}
 }
