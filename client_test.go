@@ -71,8 +71,8 @@ func TestClient(t *testing.T) {
 	})
 	defer server.Close()
 
-	c := NewClient()
-	res, err := c.Send(server.URL, payload)
+	c := NewClient(server.URL)
+	res, err := c.Send(payload)
 	if err != nil {
 		t.Error(err)
 	}
@@ -100,6 +100,7 @@ func TestClientWithHeaders(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
+		server.URL,
 		ClientOpts.WithRequestTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 		ClientOpts.WithHeaders(http.Header{
@@ -107,7 +108,7 @@ func TestClientWithHeaders(t *testing.T) {
 			"user-agent": []string{"webhook-test/1.0"},
 		}),
 	)
-	res, err := c.Send(server.URL, payload)
+	res, err := c.Send(payload)
 	if err != nil {
 		t.Error(err)
 	}
@@ -122,11 +123,12 @@ func TestClientTimeout(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
+		server.URL,
 		ClientOpts.WithRetries(3),
 		ClientOpts.WithRequestTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 	)
-	res, err := c.Send(server.URL, "this is a test")
+	res, err := c.Send("this is a test")
 	if count != res.Attempts {
 		t.Errorf("result should have %d attempts, got %d", count, res.Attempts)
 	}
@@ -155,9 +157,10 @@ func TestClientRetryOn500(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
+		server.URL,
 		ClientOpts.WithBackoffFunc(NoBackoff()),
 	)
-	res, err := c.Send(server.URL, "this is a test")
+	res, err := c.Send("this is a test")
 	if res.Attempts != count {
 		t.Errorf("expected %d attempts in result, got %d", count, res.Attempts)
 	}
@@ -174,11 +177,12 @@ func TestClientCancel(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
-		ClientOpts.WithBackoffFunc(ConstantBackoff(1 * time.Minute)),
+		server.URL,
+		ClientOpts.WithBackoffFunc(ConstantBackoff(1*time.Minute)),
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	res, err := c.SendContext(ctx, server.URL, "this is a test")
+	res, err := c.SendContext(ctx, "this is a test")
 	if res.Attempts != 1 {
 		t.Errorf("expected %d attempts in result, got %d", 1, res.Attempts)
 	}
@@ -199,11 +203,12 @@ func TestRetryTimelimit(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
+		server.URL,
 		ClientOpts.WithRequestTimeout(10*time.Millisecond),
 		ClientOpts.WithBackoffFunc(LinearBackoff(4*time.Millisecond, 100*time.Millisecond)),
 	)
 
-	res, err := c.SendContext(context.Background(), server.URL, "this is a test")
+	res, err := c.SendContext(context.Background(), "this is a test")
 	if count != res.Attempts {
 		t.Errorf("expected %d attempts in result, got %d", count, res.Attempts)
 	}
@@ -230,10 +235,11 @@ func TestRetryTimeout(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient(
+		server.URL,
 		ClientOpts.WithTimeout(50*time.Millisecond),
 		ClientOpts.WithBackoffFunc(LinearBackoff(10*time.Millisecond, 1*time.Minute)),
 	)
-	res, err := c.Send(server.URL, "this is a test")
+	res, err := c.Send("this is a test")
 	if count != res.Attempts {
 		t.Errorf("expected %d attempts in result, got %d", count, res.Attempts)
 	}
