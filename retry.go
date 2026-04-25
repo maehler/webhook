@@ -3,7 +3,6 @@ package webhook
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 )
 
@@ -30,7 +29,6 @@ func retry(ctx context.Context, cfg retryConfig, fn func() error) error {
 	defer cancel()
 	var err error
 	for attempt := range cfg.maxRetries {
-		slog.Info("retrying function call", "attempt", attempt)
 		err = fn()
 		if err == nil {
 			return nil
