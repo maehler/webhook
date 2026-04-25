@@ -19,7 +19,7 @@ func TestRetry(t *testing.T) {
 	attempt := 0
 	start := time.Now()
 
-	err := retry(context.Background(), cfg, func() error {
+	n, err := retry(context.Background(), cfg, func() error {
 		attempt += 1
 		t.Logf("attempt %d after %s", attempt, time.Since(start))
 		if attempt == attempts {
@@ -27,6 +27,9 @@ func TestRetry(t *testing.T) {
 		}
 		return fmt.Errorf("failed")
 	})
+	if n != attempts {
+		t.Errorf("expected %d attempts from retry, got %d", attempts, n)
+	}
 	if attempt != attempts {
 		t.Errorf("expected %d attempts, only saw %d", attempts, attempt)
 	}

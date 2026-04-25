@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 )
 
@@ -26,7 +25,6 @@ func IsRetryable(err error) bool {
 		return webhookErr.StatusCode == http.StatusTooManyRequests || webhookErr.StatusCode >= http.StatusInternalServerError
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		slog.Info("checking if error is retryable", "error", err)
 		return true
 	}
 	return false
