@@ -46,7 +46,9 @@ func NewClient(opts ...ClientOptionFunc) *Client {
 	return &client
 }
 
-// Send a webhook payload to the specified url.
+// Send a webhook payload to the specified url. `Result.Response` can be nil
+// if a non-nil error is returned, but will always be defined if a nil error
+// is returned.
 func (c *Client) Send(url string, payload any) (Result, error) {
 	return c.SendContext(context.Background(), url, payload)
 }
@@ -54,7 +56,8 @@ func (c *Client) Send(url string, payload any) (Result, error) {
 // SendContext sends a webhook payload to the specified url with a given context.
 // ctx should not have a timeout set since Send manages this internally both
 // for individual requests and the total time for all retries. Cancellation
-// via ctx still happens.
+// via ctx still happens. `Result.Response` can be nil if a non-nil error is
+// returned, but will always be defined if a nil error is returned.
 func (c *Client) SendContext(ctx context.Context, url string, payload any) (Result, error) {
 	var result Result
 	attempts, retryErr := retry(ctx, c.retryConfig, func() error {
