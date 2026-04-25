@@ -18,6 +18,7 @@ type Result struct {
 // Client is a webhook client.
 type Client struct {
 	client *http.Client
+	URL    string
 	Method string
 	// Timeout is the timeout for each individual request that is sent.
 	Timeout     time.Duration
@@ -28,8 +29,9 @@ type Client struct {
 // NewClient creates a new webhook client. The default config uses a timeout for each
 // individual request of 10 seconds, and a maximum of 15 retries with exponential backoff
 // starting at 500ms, and a total timeout for all retries of 5 minutes.
-func NewClient(opts ...ClientOptionFunc) *Client {
+func NewClient(url string, opts ...ClientOptionFunc) *Client {
 	client := Client{
+		URL:     url,
 		client:  &http.Client{},
 		Timeout: 10 * time.Second,
 		retryConfig: retryConfig{
@@ -49,8 +51,8 @@ func NewClient(opts ...ClientOptionFunc) *Client {
 // Send a webhook payload to the specified url. `Result.Response` can be nil
 // if a non-nil error is returned, but will always be defined if a nil error
 // is returned.
-func (c *Client) Send(url string, payload any) (Result, error) {
-	return c.SendContext(context.Background(), url, payload)
+func (c *Client) Send(payload any) (Result, error) {
+	return c.SendContext(context.Background(), payload)
 }
 
 // SendContext sends a webhook payload to the specified url with a given context.
@@ -58,10 +60,10 @@ func (c *Client) Send(url string, payload any) (Result, error) {
 // for individual requests and the total time for all retries. Cancellation
 // via ctx still happens. `Result.Response` can be nil if a non-nil error is
 // returned, but will always be defined if a nil error is returned.
-func (c *Client) SendContext(ctx context.Context, url string, payload any) (Result, error) {
+func (c *Client) SendContext(ctx context.Context, payload any) (Result, error) {
 	var result Result
 	attempts, retryErr := retry(ctx, c.retryConfig, func() error {
-		resp, err := c.send(ctx, url, payload)
+		resp, err := c.send(ctx, c.URL, payload)
 		if resp != nil {
 			result.Response = resp
 		}
