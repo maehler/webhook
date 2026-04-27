@@ -47,7 +47,7 @@ func retry(ctx context.Context, cfg retryConfig, fn func() error) (int, error) {
 }
 
 // NoBackoff returns a BackoffFunc that always returns 0.
-func NoBackoff() func(int) time.Duration {
+func NoBackoff() BackoffFunc {
 	return ConstantBackoff(0)
 }
 
