@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/maehler/webhook/compare/v0.1.0...v0.2.0) (2026-04-27)
+
+
+### Features
+
+* set the default http method to POST ([e8393b2](https://github.com/maehler/webhook/commit/e8393b2c12657c5b5b4b0953a8f3fad1ac3d9dd7))
+
 ## 0.1.0 (2026-04-25)
 
 
