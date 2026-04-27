@@ -18,7 +18,9 @@ type Result struct {
 // Client is a webhook client.
 type Client struct {
 	client *http.Client
-	URL    string
+	// The url that should be associated with this client.
+	URL string
+	// HTTP method to use for requests, defaults to POST.
 	Method string
 	// Timeout is the timeout for each individual request that is sent.
 	Timeout     time.Duration
