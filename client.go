@@ -33,6 +33,7 @@ func NewClient(url string, opts ...ClientOptionFunc) *Client {
 	client := Client{
 		URL:     url,
 		client:  &http.Client{},
+		Method:  http.MethodPost,
 		Timeout: 10 * time.Second,
 		retryConfig: retryConfig{
 			maxRetries: 15,

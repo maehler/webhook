@@ -15,13 +15,14 @@ import (
 type capturedRequest struct {
 	body   []byte
 	header http.Header
+	method string
 }
 
 func NewTestHandler(t *testing.T, d time.Duration, status int, handler func(*capturedRequest)) http.Handler {
 	t.Helper()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		handler(&capturedRequest{body: body, header: r.Header})
+		handler(&capturedRequest{body: body, header: r.Header, method: r.Method})
 		w.WriteHeader(status)
 		if d != 0 {
 			time.Sleep(d)
@@ -65,6 +66,9 @@ func TestClient(t *testing.T) {
 	expectedPayload, _ := json.Marshal(payload)
 
 	server := NewTestServer(t, 200, func(r *capturedRequest) {
+		if r.method != http.MethodPost {
+			t.Errorf("expected http POST, got %s", r.method)
+		}
 		if !bytes.Equal(r.body, expectedPayload) {
 			t.Error("mismatching payload")
 		}
